@@ -1,25 +1,27 @@
 {
   "name": "chaincacao-contract",
-  "version": "1.0.0",
-  "description": "ChainCacao Traceability Smart Contract",
+  "version": "2.0.0",
+  "description": "ChainCacao — Enterprise Supply Chain Traceability Smart Contract (Cacao/Café, Togo)",
   "main": "index.js",
   "engines": {
-    "node": ">=14",
-    "npm": ">=6"
+    "node": ">=16",
+    "npm": ">=8"
   },
   "scripts": {
     "start": "fabric-chaincode-node start",
-    "test": "mocha test --recursive",
-    "lint": "eslint ."
+    "test": "mocha test --recursive --timeout 10000",
+    "lint": "eslint lib/ --ext .js",
+    "lint:fix": "eslint lib/ --ext .js --fix"
   },
   "dependencies": {
     "fabric-contract-api": "^2.5.0",
     "fabric-shim": "^2.5.0"
   },
   "devDependencies": {
-    "chai": "^4.3.4",
-    "eslint": "^7.32.0",
-    "mocha": "^9.1.1",
-    "sinon": "^11.1.2"
+    "chai": "^4.3.7",
+    "eslint": "^8.50.0",
+    "mocha": "^10.2.0",
+    "sinon": "^15.2.0",
+    "sinon-chai": "^3.7.0"
   }
 }

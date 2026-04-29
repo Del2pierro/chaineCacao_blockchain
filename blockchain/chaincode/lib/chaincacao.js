@@ -1,201 +1,254 @@
 'use strict';
 
 const { Contract } = require('fabric-contract-api');
+const AccessControl = require('./utils/AccessControl');
+const Validation = require('./utils/Validation');
+const Schemas = require('./models/Schemas');
+const LedgerService = require('./services/LedgerService');
 
 class ChainCacaoContract extends Contract {
 
     async initLedger(ctx) {
         console.info('============= START : Initialize Ledger ===========');
-        const lots = [
-            {
-                id: 'LOT001',
-                productType: 'CACAO',
-                weight: 500,
-                origin: 'Kpalimé, Togo',
-                producer: 'Coopérative AKAFO',
-                owner: 'Coopérative AKAFO',
-                status: 'CREATED',
-                certifications: [],
-                inspections: [],
-                complianceEUDR: false,
-                createdAt: new Date().toISOString()
-            }
-        ];
-
-        for (let i = 0; i < lots.length; i++) {
-            await ctx.stub.putState(lots[i].id, Buffer.from(JSON.stringify(lots[i])));
-            console.info('Added <--> ', lots[i]);
-        }
+        // Initialisation optionnelle ou vide pour production
         console.info('============= END : Initialize Ledger ===========');
     }
 
-    // --- ACCESS CONTROL UTILS ---
-    async _checkRole(ctx, allowedMSPs) {
-        const clientMSP = ctx.clientIdentity.getMSPID();
-        if (!allowedMSPs.includes(clientMSP)) {
-            throw new Error(`Access Denied: Organization ${clientMSP} is not authorized for this action.`);
+    // =========================================================================
+    // ACTEURS
+    // =========================================================================
+
+    async RegisterActor(ctx, actorIdHash, typeActeur, clePublique) {
+        // Seul le Ministère ou l'admin peut enregistrer des acteurs officiels
+        AccessControl.checkRole(ctx, [AccessControl.ROLES.MINISTERE]);
+        
+        const ledger = new LedgerService(ctx);
+        if (await ledger.exists(actorIdHash)) {
+            throw new Error(`ACTEUR_EXISTE: L'acteur ${actorIdHash} est déjà enregistré.`);
         }
+
+        const timestamp = ctx.stub.getTxTimestamp().seconds.low;
+        const dateStr = new Date(timestamp * 1000).toISOString();
+
+        const actor = Schemas.createActor(actorIdHash, typeActeur, clePublique, dateStr);
+        await ledger.putState(actorIdHash, actor);
+        
+        return JSON.stringify(actor);
     }
 
-    // --- BUSINESS FUNCTIONS ---
+    // =========================================================================
+    // LOTS
+    // =========================================================================
 
-    /**
-     * Create a new Lot
-     * Only OrgProducteurs can create lots
-     */
-    async CreateLot(ctx, lotId, productType, weight, origin, producer) {
-        await this._checkRole(ctx, ['OrgProducteursMSP']);
+    async CreateLot(ctx, lotHash, farmerId, gpsStr, poidsKg, espece, dateCollecte, mediaHash, coopId) {
+        AccessControl.checkRole(ctx, [AccessControl.ROLES.PRODUCTEUR, AccessControl.ROLES.CERTIFICATEUR]);
+        
+        const gps = JSON.parse(gpsStr);
+        Validation.checkGPS(gps);
+        Validation.checkNumber(parseFloat(poidsKg), 'poidsKg');
+        Validation.checkTimestamp(dateCollecte, 'dateCollecte');
 
-        const exists = await this._assetExists(ctx, lotId);
-        if (exists) {
-            throw new Error(`The lot ${lotId} already exists`);
+        const ledger = new LedgerService(ctx);
+        if (await ledger.exists(lotHash)) {
+            throw new Error(`LOT_EXISTE: Le lot ${lotHash} existe déjà.`);
         }
 
-        const lot = {
-            id: lotId,
-            productType,
-            weight: parseFloat(weight),
-            origin,
-            producer,
-            owner: producer,
-            status: 'CREATED',
-            certifications: [],
-            inspections: [],
-            complianceEUDR: false,
-            createdAt: new Date().toISOString(),
-            docType: 'lot'
-        };
-
-        await ctx.stub.putState(lotId, Buffer.from(JSON.stringify(lot)));
+        const lot = Schemas.createLot(lotHash, farmerId, gps, parseFloat(poidsKg), espece, dateCollecte, mediaHash, coopId);
+        await ledger.putState(lotHash, lot);
+        
         return JSON.stringify(lot);
     }
 
-    /**
-     * Add Certification to a Lot
-     * Only OrgCertif can add certifications
-     */
-    async AddCertification(ctx, lotId, certName, certId, inspector) {
-        await this._checkRole(ctx, ['OrgCertifMSP']);
-
-        const lot = await this._getLot(ctx, lotId);
-        
-        const certification = {
-            name: certName,
-            id: certId,
-            inspector,
-            date: new Date().toISOString()
-        };
-
-        lot.certifications.push(certification);
-        await ctx.stub.putState(lotId, Buffer.from(JSON.stringify(lot)));
-        return JSON.stringify(lot);
-    }
-
-    /**
-     * Transfer Ownership
-     * Usually from Producer to Exporter or Exporter to Importer
-     */
-    async TransferLotOwnership(ctx, lotId, newOwner) {
-        const lot = await this._getLot(ctx, lotId);
-        
-        // Validation: current owner must authorize or be the caller (simpler here for demo)
-        // In real world, we check ctx.clientIdentity.getAttributeValue('name') or similar
-        
-        lot.owner = newOwner;
-        await ctx.stub.putState(lotId, Buffer.from(JSON.stringify(lot)));
-        return JSON.stringify(lot);
-    }
-
-    /**
-     * Approve Lot for Export
-     * Only Ministere or Certif can approve
-     */
-    async ApproveLot(ctx, lotId) {
-        await this._checkRole(ctx, ['OrgCertifMSP', 'OrgMinistereMSP']);
-        
-        const lot = await this._getLot(ctx, lotId);
-        lot.status = 'APPROVED';
-        await ctx.stub.putState(lotId, Buffer.from(JSON.stringify(lot)));
-        return JSON.stringify(lot);
-    }
-
-    /**
-     * Verify EUDR Compliance
-     * Logic based on certifications and origin
-     */
-    async VerifyComplianceEUDR(ctx, lotId) {
-        const lot = await this._getLot(ctx, lotId);
-        
-        // Simple logic: must have at least one certification to be EUDR compliant for this demo
-        if (lot.certifications.length > 0) {
-            lot.complianceEUDR = true;
-        } else {
-            lot.complianceEUDR = false;
-        }
-        
-        await ctx.stub.putState(lotId, Buffer.from(JSON.stringify(lot)));
-        return JSON.stringify({ lotId, complianceEUDR: lot.complianceEUDR });
-    }
-
-    /**
-     * Get Lot History
-     */
-    async GetLotHistory(ctx, lotId) {
-        let resultsIterator = await ctx.stub.getHistoryForKey(lotId);
-        let results = [];
-        let res = await resultsIterator.next();
-        while (!res.done) {
-            if (res.value) {
-                const obj = JSON.parse(res.value.value.toString('utf8'));
-                results.push({
-                    txId: res.value.txId,
-                    timestamp: res.value.timestamp,
-                    isDelete: res.value.isDelete,
-                    data: obj
-                });
-            }
-            res = await resultsIterator.next();
-        }
-        await resultsIterator.close();
-        return JSON.stringify(results);
-    }
-
-    async GetLotById(ctx, lotId) {
-        const lot = await this._getLot(ctx, lotId);
+    async GetLot(ctx, lotHash) {
+        const ledger = new LedgerService(ctx);
+        const lot = await ledger.getState(lotHash);
+        if (!lot) throw new Error(`LOT_NON_TROUVE: ${lotHash}`);
         return JSON.stringify(lot);
     }
 
     async GetAllLots(ctx) {
-        const allResults = [];
-        const iterator = await ctx.stub.getStateByRange('', '');
-        let result = await iterator.next();
-        while (!result.done) {
-            const strValue = Buffer.from(result.value.value.toString()).toString('utf8');
-            let record;
-            try {
-                record = JSON.parse(strValue);
-            } catch (err) {
-                console.log(err);
-                record = strValue;
-            }
-            allResults.push(record);
-            result = await iterator.next();
-        }
-        return JSON.stringify(allResults);
+        const ledger = new LedgerService(ctx);
+        const query = { selector: { docType: Schemas.DOC_TYPES.LOT } };
+        const results = await ledger.getQueryResultForQueryString(JSON.stringify(query));
+        return JSON.stringify(results);
     }
 
-    // --- PRIVATE UTILS ---
-    async _getLot(ctx, lotId) {
-        const lotJSON = await ctx.stub.getState(lotId);
-        if (!lotJSON || lotJSON.length === 0) {
-            throw new Error(`The lot ${lotId} does not exist`);
-        }
-        return JSON.parse(lotJSON.toString());
+    async UpdateLotStatus(ctx, lotHash, nouveauStatut) {
+        // Autorisé pour Producteurs (collecte), Certif (qualité), Exportateurs (reçu)
+        AccessControl.checkRole(ctx, [AccessControl.ROLES.PRODUCTEUR, AccessControl.ROLES.CERTIFICATEUR, AccessControl.ROLES.EXPORTATEUR]);
+        
+        const ledger = new LedgerService(ctx);
+        const lot = await ledger.getState(lotHash);
+        if (!lot) throw new Error(`LOT_NON_TROUVE: ${lotHash}`);
+
+        lot.statut = nouveauStatut;
+        await ledger.putState(lotHash, lot);
+        return JSON.stringify(lot);
     }
 
-    async _assetExists(ctx, lotId) {
-        const lotJSON = await ctx.stub.getState(lotId);
-        return lotJSON && lotJSON.length > 0;
+    // =========================================================================
+    // TRANSFERTS
+    // =========================================================================
+
+    async CreateTransfer(ctx, transferHash, lotHashesStr, expediteurId, destinataireId, preuveHash) {
+        const lotHashes = JSON.parse(lotHashesStr);
+        const ledger = new LedgerService(ctx);
+
+        // Vérifier existence des lots
+        for (const hash of lotHashes) {
+            if (!(await ledger.exists(hash))) throw new Error(`LOT_INEXISTANT: ${hash}`);
+        }
+
+        const timestamp = new Date(ctx.stub.getTxTimestamp().seconds.low * 1000).toISOString();
+        const transfer = Schemas.createTransfer(transferHash, lotHashes, expediteurId, destinataireId, timestamp, preuveHash);
+        
+        await ledger.putState(transferHash, transfer);
+        return JSON.stringify(transfer);
+    }
+
+    async GetTransfer(ctx, transferHash) {
+        const ledger = new LedgerService(ctx);
+        const transfer = await ledger.getState(transferHash);
+        if (!transfer) throw new Error(`TRANSFERT_NON_TROUVE: ${transferHash}`);
+        return JSON.stringify(transfer);
+    }
+
+    // =========================================================================
+    // TRANSFORMATIONS
+    // =========================================================================
+
+    async CreateTransformation(ctx, transformationHash, lotHashesStr, typeProcessus, preuveHash) {
+        const lotHashes = JSON.parse(lotHashesStr);
+        const ledger = new LedgerService(ctx);
+
+        const timestamp = new Date(ctx.stub.getTxTimestamp().seconds.low * 1000).toISOString();
+        const transformation = Schemas.createTransformation(transformationHash, lotHashes, typeProcessus, timestamp, preuveHash);
+        
+        await ledger.putState(transformationHash, transformation);
+        return JSON.stringify(transformation);
+    }
+
+    async GetTransformation(ctx, transformationHash) {
+        const ledger = new LedgerService(ctx);
+        const trans = await ledger.getState(transformationHash);
+        if (!trans) throw new Error(`TRANSFORMATION_NON_TROUVE: ${transformationHash}`);
+        return JSON.stringify(trans);
+    }
+
+    // =========================================================================
+    // EXPEDITIONS (SHIPMENTS)
+    // =========================================================================
+
+    async CreateShipment(ctx, shipmentHash, lotHashesStr, exportateurId, destination, documentsHash, dateDepart, dateArrivee) {
+        AccessControl.checkRole(ctx, [AccessControl.ROLES.EXPORTATEUR]);
+        
+        const lotHashes = JSON.parse(lotHashesStr);
+        const ledger = new LedgerService(ctx);
+
+        const shipment = Schemas.createShipment(shipmentHash, lotHashes, exportateurId, destination, documentsHash, dateDepart, dateArrivee);
+        await ledger.putState(shipmentHash, shipment);
+        
+        return JSON.stringify(shipment);
+    }
+
+    async GetShipment(ctx, shipmentHash) {
+        const ledger = new LedgerService(ctx);
+        const shipment = await ledger.getState(shipmentHash);
+        if (!shipment) throw new Error(`SHIPMENT_NON_TROUVE: ${shipmentHash}`);
+        return JSON.stringify(shipment);
+    }
+
+    // =========================================================================
+    // EVENEMENTS TRANSPORT
+    // =========================================================================
+
+    async AddTransportEvent(ctx, eventHash, refHash, transporteurIdHash, typeEvenement, gpsStr, preuveHash) {
+        const gps = JSON.parse(gpsStr);
+        const timestamp = new Date(ctx.stub.getTxTimestamp().seconds.low * 1000).toISOString();
+        
+        const event = Schemas.createTransportEvent(eventHash, refHash, transporteurIdHash, typeEvenement, gps, timestamp, preuveHash);
+        const ledger = new LedgerService(ctx);
+        await ledger.putState(eventHash, event);
+        
+        return JSON.stringify(event);
+    }
+
+    async GetTransportEvents(ctx, refHash) {
+        const ledger = new LedgerService(ctx);
+        const query = { 
+            selector: { 
+                docType: Schemas.DOC_TYPES.EVENT,
+                referenceHash: refHash
+            } 
+        };
+        const results = await ledger.getQueryResultForQueryString(JSON.stringify(query));
+        return JSON.stringify(results);
+    }
+
+    // =========================================================================
+    // CERTIFICATIONS
+    // =========================================================================
+
+    async AddCertification(ctx, certHash, refHash, verificateurId, statut, rapportHash) {
+        AccessControl.checkRole(ctx, [AccessControl.ROLES.CERTIFICATEUR, AccessControl.ROLES.MINISTERE]);
+        
+        const timestamp = new Date(ctx.stub.getTxTimestamp().seconds.low * 1000).toISOString();
+        const cert = Schemas.createCertification(certHash, refHash, verificateurId, statut, timestamp, rapportHash);
+        
+        const ledger = new LedgerService(ctx);
+        await ledger.putState(certHash, cert);
+        
+        return JSON.stringify(cert);
+    }
+
+    async GetCertification(ctx, certHash) {
+        const ledger = new LedgerService(ctx);
+        const cert = await ledger.getState(certHash);
+        if (!cert) throw new Error(`CERTIFICATION_NON_TROUVE: ${certHash}`);
+        return JSON.stringify(cert);
+    }
+
+    // =========================================================================
+    // REQUETES AVANCEES ET HISTORIQUE
+    // =========================================================================
+
+    async GetHistoryForAsset(ctx, assetHash) {
+        const ledger = new LedgerService(ctx);
+        const history = await ledger.getHistory(assetHash);
+        return JSON.stringify(history);
+    }
+
+    async QueryLotsByStatus(ctx, statut) {
+        const ledger = new LedgerService(ctx);
+        const query = { selector: { docType: Schemas.DOC_TYPES.LOT, statut: statut } };
+        const results = await ledger.getQueryResultForQueryString(JSON.stringify(query));
+        return JSON.stringify(results);
+    }
+
+    async QueryLotsByFarmer(ctx, farmerId) {
+        const ledger = new LedgerService(ctx);
+        const query = { selector: { docType: Schemas.DOC_TYPES.LOT, farmerId: farmerId } };
+        const results = await ledger.getQueryResultForQueryString(JSON.stringify(query));
+        return JSON.stringify(results);
+    }
+
+    async QueryShipmentsByDestination(ctx, destination) {
+        const ledger = new LedgerService(ctx);
+        const query = { selector: { docType: Schemas.DOC_TYPES.SHIPMENT, destination: destination } };
+        const results = await ledger.getQueryResultForQueryString(JSON.stringify(query));
+        return JSON.stringify(results);
+    }
+
+    async QueryCertifications(ctx, refHash) {
+        const ledger = new LedgerService(ctx);
+        const query = { 
+            selector: { 
+                docType: Schemas.DOC_TYPES.CERTIFICATION,
+                referenceHash: refHash
+            } 
+        };
+        const results = await ledger.getQueryResultForQueryString(JSON.stringify(query));
+        return JSON.stringify(results);
     }
 }
 

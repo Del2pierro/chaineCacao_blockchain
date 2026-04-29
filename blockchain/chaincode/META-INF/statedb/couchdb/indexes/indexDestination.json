@@ -1,0 +1,7 @@
+{
+    "index": {
+        "fields": ["docType", "destination"]
+    },
+    "name": "indexDestination",
+    "type": "json"
+}

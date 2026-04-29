@@ -1,0 +1,7 @@
+{
+    "index": {
+        "fields": ["docType", "farmerId"]
+    },
+    "name": "indexFarmer",
+    "type": "json"
+}

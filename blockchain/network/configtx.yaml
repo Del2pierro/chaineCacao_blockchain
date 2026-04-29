@@ -1,0 +1,218 @@
+Organizations:
+    - &OrdererOrg
+        Name: OrdererOrg
+        ID: OrdererMSP
+        MSPDir: ../organizations/ordererOrganizations/chaincacao.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrdererMSP.member')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrdererMSP.admin')"
+
+    - &OrgProducteurs
+        Name: OrgProducteurs
+        ID: OrgProducteursMSP
+        MSPDir: ../organizations/peerOrganizations/producteurs.chaincacao.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrgProducteursMSP.admin', 'OrgProducteursMSP.peer', 'OrgProducteursMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrgProducteursMSP.admin', 'OrgProducteursMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrgProducteursMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('OrgProducteursMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.producteurs.chaincacao.com
+              Port: 7051
+
+    - &OrgExportateurs
+        Name: OrgExportateurs
+        ID: OrgExportateursMSP
+        MSPDir: ../organizations/peerOrganizations/exportateurs.chaincacao.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrgExportateursMSP.admin', 'OrgExportateursMSP.peer', 'OrgExportateursMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrgExportateursMSP.admin', 'OrgExportateursMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrgExportateursMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('OrgExportateursMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.exportateurs.chaincacao.com
+              Port: 8051
+
+    - &OrgCertif
+        Name: OrgCertif
+        ID: OrgCertifMSP
+        MSPDir: ../organizations/peerOrganizations/certif.chaincacao.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrgCertifMSP.admin', 'OrgCertifMSP.peer', 'OrgCertifMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrgCertifMSP.admin', 'OrgCertifMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrgCertifMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('OrgCertifMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.certif.chaincacao.com
+              Port: 9051
+
+    - &OrgMinistere
+        Name: OrgMinistere
+        ID: OrgMinistereMSP
+        MSPDir: ../organizations/peerOrganizations/ministere.chaincacao.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrgMinistereMSP.admin', 'OrgMinistereMSP.peer', 'OrgMinistereMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrgMinistereMSP.admin', 'OrgMinistereMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrgMinistereMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('OrgMinistereMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.ministere.chaincacao.com
+              Port: 10051
+
+    - &OrgImportateurs
+        Name: OrgImportateurs
+        ID: OrgImportateursMSP
+        MSPDir: ../organizations/peerOrganizations/importateurs.chaincacao.com/msp
+        Policies:
+            Readers:
+                Type: Signature
+                Rule: "OR('OrgImportateursMSP.admin', 'OrgImportateursMSP.peer', 'OrgImportateursMSP.client')"
+            Writers:
+                Type: Signature
+                Rule: "OR('OrgImportateursMSP.admin', 'OrgImportateursMSP.client')"
+            Admins:
+                Type: Signature
+                Rule: "OR('OrgImportateursMSP.admin')"
+            Endorsement:
+                Type: Signature
+                Rule: "OR('OrgImportateursMSP.peer')"
+        AnchorPeers:
+            - Host: peer0.importateurs.chaincacao.com
+              Port: 11051
+
+Capabilities:
+    Channel: &ChannelCapabilities
+        V2_0: true
+    Orderer: &OrdererCapabilities
+        V2_0: true
+    Application: &ApplicationCapabilities
+        V2_0: true
+
+Application: &ApplicationDefaults
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        LifecycleEndorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+        Endorsement:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Endorsement"
+    Capabilities:
+        <<: *ApplicationCapabilities
+
+Orderer: &OrdererDefaults
+    OrdererType: etcdraft
+    Addresses:
+        - orderer.chaincacao.com:7050
+    BatchTimeout: 2s
+    BatchSize:
+        MaxMessageCount: 10
+        AbsoluteMaxBytes: 99 MB
+        PreferredMaxBytes: 512 KB
+    Organizations:
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+        BlockValidation:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+
+Channel: &ChannelDefaults
+    Policies:
+        Readers:
+            Type: ImplicitMeta
+            Rule: "ANY Readers"
+        Writers:
+            Type: ImplicitMeta
+            Rule: "ANY Writers"
+        Admins:
+            Type: ImplicitMeta
+            Rule: "MAJORITY Admins"
+    Capabilities:
+        <<: *ChannelCapabilities
+
+Profiles:
+    ChainCacaoOrdererGenesis:
+        <<: *ChannelDefaults
+        Orderer:
+            <<: *OrdererDefaults
+            Organizations:
+                - *OrdererOrg
+            Capabilities:
+                <<: *OrdererCapabilities
+        Consortiums:
+            SampleConsortium:
+                Organizations:
+                    - *OrgProducteurs
+                    - *OrgExportateurs
+                    - *OrgCertif
+                    - *OrgMinistere
+                    - *OrgImportateurs
+    ChainCacaoChannel:
+        Consortium: SampleConsortium
+        <<: *ChannelDefaults
+        Application:
+            <<: *ApplicationDefaults
+            Organizations:
+                - *OrgProducteurs
+                - *OrgExportateurs
+                - *OrgCertif
+                - *OrgMinistere
+                - *OrgImportateurs
+            Capabilities:
+                <<: *ApplicationCapabilities

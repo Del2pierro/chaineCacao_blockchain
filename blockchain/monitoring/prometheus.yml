@@ -1,0 +1,14 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'fabric-nodes'
+    static_configs:
+      - targets:
+        - 'peer0.producteurs.chaincacao.com:9443'
+        - 'peer0.exportateurs.chaincacao.com:9443'
+        - 'peer0.certif.chaincacao.com:9443'
+        - 'peer0.ministere.chaincacao.com:9443'
+        - 'peer0.importateurs.chaincacao.com:9443'
+        - 'orderer.chaincacao.com:9443'

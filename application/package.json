@@ -1,0 +1,20 @@
+{
+  "name": "trace-cacao-app",
+  "version": "1.0.0",
+  "description": "Application cliente Node.js pour le réseau Fabric ChainCacao",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "nodemon src/app.js"
+  },
+  "dependencies": {
+    "@hyperledger/fabric-gateway": "^1.4.0",
+    "@grpc/grpc-js": "^1.9.0",
+    "express": "^4.18.2",
+    "dotenv": "^16.3.1"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.0"
+  },
+  "license": "Apache-2.0"
+}

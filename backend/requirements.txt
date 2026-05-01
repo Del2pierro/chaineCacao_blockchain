@@ -1,0 +1,14 @@
+fastapi==0.115.6
+uvicorn[standard]==0.32.1
+pydantic==2.10.3
+pydantic-settings==2.7.1
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.20
+httpx==0.28.1
+sqlalchemy==2.0.36
+psycopg2-binary==2.9.10
+python-dotenv==1.0.1
+# Note: For Hyperledger Fabric, we often use a gateway service or a specific library like 'hfc'
+# However, many modern architectures use a separate 'Fabric Gateway' or 'API Gateway' container.
+# We will simulate the connection via a service class.

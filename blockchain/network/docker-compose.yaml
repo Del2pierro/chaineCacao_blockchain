@@ -10,9 +10,135 @@ volumes:
   peer0.exportateurs.chaincacao.com:
   peer0.certif.chaincacao.com:
   peer0.ministere.chaincacao.com:
-  peer0.importateurs.chaincacao.com:
+  peer0.transformateurs.chaincacao.com:
 
 services:
+  ca.producteurs.chaincacao.com:
+    image: hyperledger/fabric-ca:1.5
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-producteurs
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=7054
+      - FABRIC_CA_SERVER_REGISTRAR_NAME=admin
+      - FABRIC_CA_SERVER_REGISTRAR_PASS=adminpw
+      - FABRIC_CA_SERVER_CSR_HOSTS=localhost,127.0.0.1
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/tmp/fabric-ca-server.db
+    ports:
+      - "7054:7054"
+    command: fabric-ca-server start -b admin:adminpw -d
+    volumes:
+      - ../organizations/fabric-ca/producteurs:/etc/hyperledger/fabric-ca-server
+    container_name: ca_producteurs
+    networks:
+      - chaincacao
+
+  ca.exportateurs.chaincacao.com:
+    image: hyperledger/fabric-ca:1.5
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-exportateurs
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=8054
+      - FABRIC_CA_SERVER_REGISTRAR_NAME=admin
+      - FABRIC_CA_SERVER_REGISTRAR_PASS=adminpw
+      - FABRIC_CA_SERVER_CSR_HOSTS=localhost,127.0.0.1
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/tmp/fabric-ca-server.db
+    ports:
+      - "8054:8054"
+    command: fabric-ca-server start -b admin:adminpw -d
+    volumes:
+      - ../organizations/fabric-ca/exportateurs:/etc/hyperledger/fabric-ca-server
+    container_name: ca_exportateurs
+    networks:
+      - chaincacao
+
+  ca.certif.chaincacao.com:
+    image: hyperledger/fabric-ca:1.5
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-certif
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=9054
+      - FABRIC_CA_SERVER_REGISTRAR_NAME=admin
+      - FABRIC_CA_SERVER_REGISTRAR_PASS=adminpw
+      - FABRIC_CA_SERVER_CSR_HOSTS=localhost,127.0.0.1
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/tmp/fabric-ca-server.db
+    ports:
+      - "9054:9054"
+    command: fabric-ca-server start -b admin:adminpw -d
+    volumes:
+      - ../organizations/fabric-ca/certif:/etc/hyperledger/fabric-ca-server
+    container_name: ca_certif
+    networks:
+      - chaincacao
+
+  ca.ministere.chaincacao.com:
+    image: hyperledger/fabric-ca:1.5
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-ministere
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=10054
+      - FABRIC_CA_SERVER_REGISTRAR_NAME=admin
+      - FABRIC_CA_SERVER_REGISTRAR_PASS=adminpw
+      - FABRIC_CA_SERVER_CSR_HOSTS=localhost,127.0.0.1
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/tmp/fabric-ca-server.db
+    ports:
+      - "10054:10054"
+    command: fabric-ca-server start -b admin:adminpw -d
+    volumes:
+      - ../organizations/fabric-ca/ministere:/etc/hyperledger/fabric-ca-server
+    container_name: ca_ministere
+    networks:
+      - chaincacao
+
+  ca.transformateurs.chaincacao.com:
+    image: hyperledger/fabric-ca:1.5
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-transformateurs
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=11054
+      - FABRIC_CA_SERVER_REGISTRAR_NAME=admin
+      - FABRIC_CA_SERVER_REGISTRAR_PASS=adminpw
+      - FABRIC_CA_SERVER_CSR_HOSTS=localhost,127.0.0.1
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/tmp/fabric-ca-server.db
+    ports:
+      - "11054:11054"
+    command: fabric-ca-server start -b admin:adminpw -d
+    volumes:
+      - ../organizations/fabric-ca/transformateurs:/etc/hyperledger/fabric-ca-server
+    container_name: ca_transformateurs
+    networks:
+      - chaincacao
+
+  ca.orderer.chaincacao.com:
+    image: hyperledger/fabric-ca:1.5
+    environment:
+      - FABRIC_CA_HOME=/etc/hyperledger/fabric-ca-server
+      - FABRIC_CA_SERVER_CA_NAME=ca-orderer
+      - FABRIC_CA_SERVER_TLS_ENABLED=true
+      - FABRIC_CA_SERVER_PORT=12054
+      - FABRIC_CA_SERVER_REGISTRAR_NAME=admin
+      - FABRIC_CA_SERVER_REGISTRAR_PASS=adminpw
+      - FABRIC_CA_SERVER_CSR_HOSTS=localhost,127.0.0.1
+      - FABRIC_CA_SERVER_DB_TYPE=sqlite3
+      - FABRIC_CA_SERVER_DB_DATASOURCE=/tmp/fabric-ca-server.db
+    ports:
+      - "12054:12054"
+    command: fabric-ca-server start -b admin:adminpw -d
+    volumes:
+      - ../organizations/fabric-ca/orderer:/etc/hyperledger/fabric-ca-server
+    container_name: ca_orderer
+    networks:
+      - chaincacao
+
   orderer.chaincacao.com:
     container_name: orderer.chaincacao.com
     image: hyperledger/fabric-orderer:2.5
@@ -28,8 +154,6 @@ services:
       - ORDERER_GENERAL_TLS_PRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_TLS_CERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_TLS_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
-      - ORDERER_KAFKA_TOPIC_REPLICATIONFACTOR=1
-      - ORDERER_KAFKA_VERBOSE=true
       - ORDERER_GENERAL_CLUSTER_CLIENTCERTIFICATE=/var/hyperledger/orderer/tls/server.crt
       - ORDERER_GENERAL_CLUSTER_CLIENTPRIVATEKEY=/var/hyperledger/orderer/tls/server.key
       - ORDERER_GENERAL_CLUSTER_ROOTCAS=[/var/hyperledger/orderer/tls/ca.crt]
@@ -53,7 +177,6 @@ services:
       - CORE_VM_DOCKER_HOSTCONFIG_NETWORKMODE=chaincacao_network
       - FABRIC_LOGGING_SPEC=INFO
       - CORE_PEER_TLS_ENABLED=true
-      - CORE_PEER_PROFILE_ENABLED=false
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
@@ -62,11 +185,12 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:7051
       - CORE_PEER_CHAINCODEADDRESS=peer0.producteurs.chaincacao.com:7052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:7052
-      - CORE_PEER_GOSSIP_BOOTSTRAP=peer0.producteurs.chaincacao.com:7051
       - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.producteurs.chaincacao.com:7051
       - CORE_PEER_LOCALMSPID=OrgProducteursMSP
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb0:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     volumes:
@@ -80,20 +204,6 @@ services:
       - couchdb0
     networks:
       - chaincacao
-
-  couchdb0:
-    container_name: couchdb0
-    image: couchdb:3.1.1
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
-    ports:
-      - 5984:5984
-    networks:
-      - chaincacao
-
-  # Repeating for other orgs... I'll simplify the code for the prompt but provided the logic.
-  # For the actual deliverable, I will provide the full block.
 
   peer0.exportateurs.chaincacao.com:
     container_name: peer0.exportateurs.chaincacao.com
@@ -115,6 +225,8 @@ services:
       - CORE_PEER_LOCALMSPID=OrgExportateursMSP
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb1:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     volumes:
@@ -129,18 +241,6 @@ services:
     networks:
       - chaincacao
 
-  couchdb1:
-    container_name: couchdb1
-    image: couchdb:3.1.1
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
-    ports:
-      - 6984:5984
-    networks:
-      - chaincacao
-
-  # Certif
   peer0.certif.chaincacao.com:
     container_name: peer0.certif.chaincacao.com
     image: hyperledger/fabric-peer:2.5
@@ -157,9 +257,12 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:9051
       - CORE_PEER_CHAINCODEADDRESS=peer0.certif.chaincacao.com:9052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:9052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.certif.chaincacao.com:9051
       - CORE_PEER_LOCALMSPID=OrgCertifMSP
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb2:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     volumes:
@@ -174,18 +277,6 @@ services:
     networks:
       - chaincacao
 
-  couchdb2:
-    container_name: couchdb2
-    image: couchdb:3.1.1
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
-    ports:
-      - 7984:5984
-    networks:
-      - chaincacao
-
-  # Ministere
   peer0.ministere.chaincacao.com:
     container_name: peer0.ministere.chaincacao.com
     image: hyperledger/fabric-peer:2.5
@@ -202,9 +293,12 @@ services:
       - CORE_PEER_LISTENADDRESS=0.0.0.0:10051
       - CORE_PEER_CHAINCODEADDRESS=peer0.ministere.chaincacao.com:10052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:10052
+      - CORE_PEER_GOSSIP_EXTERNALENDPOINT=peer0.ministere.chaincacao.com:10051
       - CORE_PEER_LOCALMSPID=OrgMinistereMSP
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb3:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     volumes:
@@ -219,20 +313,8 @@ services:
     networks:
       - chaincacao
 
-  couchdb3:
-    container_name: couchdb3
-    image: couchdb:3.1.1
-    environment:
-      - COUCHDB_USER=admin
-      - COUCHDB_PASSWORD=adminpw
-    ports:
-      - 8984:5984
-    networks:
-      - chaincacao
-
-  # Importateurs
-  peer0.importateurs.chaincacao.com:
-    container_name: peer0.importateurs.chaincacao.com
+  peer0.transformateurs.chaincacao.com:
+    container_name: peer0.transformateurs.chaincacao.com
     image: hyperledger/fabric-peer:2.5
     environment:
       - CORE_VM_ENDPOINT=unix:///host/var/run/docker.sock
@@ -242,25 +324,71 @@ services:
       - CORE_PEER_TLS_CERT_FILE=/etc/hyperledger/fabric/tls/server.crt
       - CORE_PEER_TLS_KEY_FILE=/etc/hyperledger/fabric/tls/server.key
       - CORE_PEER_TLS_ROOTCERT_FILE=/etc/hyperledger/fabric/tls/ca.crt
-      - CORE_PEER_ID=peer0.importateurs.chaincacao.com
-      - CORE_PEER_ADDRESS=peer0.importateurs.chaincacao.com:11051
+      - CORE_PEER_ID=peer0.transformateurs.chaincacao.com
+      - CORE_PEER_ADDRESS=peer0.transformateurs.chaincacao.com:11051
       - CORE_PEER_LISTENADDRESS=0.0.0.0:11051
-      - CORE_PEER_CHAINCODEADDRESS=peer0.importateurs.chaincacao.com:11052
+      - CORE_PEER_CHAINCODEADDRESS=peer0.transformateurs.chaincacao.com:11052
       - CORE_PEER_CHAINCODELISTENADDRESS=0.0.0.0:11052
-      - CORE_PEER_LOCALMSPID=OrgImportateursMSP
+      - CORE_PEER_LOCALMSPID=OrgTransformateursMSP
       - CORE_LEDGER_STATE_STATEDATABASE=CouchDB
       - CORE_LEDGER_STATE_COUCHDBCONFIG_COUCHDBADDRESS=couchdb4:5984
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_USERNAME=admin
+      - CORE_LEDGER_STATE_COUCHDBCONFIG_PASSWORD=adminpw
     working_dir: /opt/gopath/src/github.com/hyperledger/fabric/peer
     command: peer node start
     volumes:
         - /var/run/:/host/var/run/
-        - ../organizations/peerOrganizations/importateurs.chaincacao.com/peers/peer0.importateurs.chaincacao.com/msp:/etc/hyperledger/fabric/msp
-        - ../organizations/peerOrganizations/importateurs.chaincacao.com/peers/peer0.importateurs.chaincacao.com/tls:/etc/hyperledger/fabric/tls
-        - peer0.importateurs.chaincacao.com:/var/hyperledger/production
+        - ../organizations/peerOrganizations/transformateurs.chaincacao.com/peers/peer0.transformateurs.chaincacao.com/msp:/etc/hyperledger/fabric/msp
+        - ../organizations/peerOrganizations/transformateurs.chaincacao.com/peers/peer0.transformateurs.chaincacao.com/tls:/etc/hyperledger/fabric/tls
+        - peer0.transformateurs.chaincacao.com:/var/hyperledger/production
     ports:
       - 11051:11051
     depends_on:
       - couchdb4
+    networks:
+      - chaincacao
+
+  couchdb0:
+    container_name: couchdb0
+    image: couchdb:3.1.1
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 5984:5984
+    networks:
+      - chaincacao
+
+  couchdb1:
+    container_name: couchdb1
+    image: couchdb:3.1.1
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 6984:5984
+    networks:
+      - chaincacao
+
+  couchdb2:
+    container_name: couchdb2
+    image: couchdb:3.1.1
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 7984:5984
+    networks:
+      - chaincacao
+
+  couchdb3:
+    container_name: couchdb3
+    image: couchdb:3.1.1
+    environment:
+      - COUCHDB_USER=admin
+      - COUCHDB_PASSWORD=adminpw
+    ports:
+      - 8984:5984
     networks:
       - chaincacao
 
@@ -299,6 +427,7 @@ services:
         - ../chaincode/:/opt/gopath/src/github.com/hyperledger/fabric-samples/chaincode
         - ../organizations:/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations
         - ../scripts:/opt/gopath/src/github.com/hyperledger/fabric/peer/scripts/
+        - ./:/opt/gopath/src/github.com/hyperledger/fabric/peer/network
         - ./channel-artifacts:/opt/gopath/src/github.com/hyperledger/fabric/peer/channel-artifacts
     networks:
       - chaincacao

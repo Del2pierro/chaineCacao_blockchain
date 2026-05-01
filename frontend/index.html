@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ChainCacao | Dashboard Blockchain</title>
+    <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <script src="https://kit.fontawesome.com/a076d05399.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <div class="background-glow"></div>
+    
+    <nav class="sidebar">
+        <div class="logo">
+            <span class="icon">🍫</span>
+            <h1>ChainCacao</h1>
+        </div>
+        <ul class="nav-links">
+            <li class="active" onclick="showSection('dashboard')"><i class="fas fa-th-large"></i> Dashboard</li>
+            <li onclick="showSection('create')"><i class="fas fa-plus-circle"></i> Nouveau Lot</li>
+            <li onclick="showSection('members')"><i class="fas fa-users"></i> Membres</li>
+            <li onclick="showSection('verify')"><i class="fas fa-qrcode"></i> Vérification</li>
+        </ul>
+
+        <div class="org-badge">
+            <span class="status-dot"></span> Org: Producteurs
+        </div>
+    </nav>
+
+    <main class="content">
+        <!-- Dashboard Section -->
+        <section id="dashboard-section" class="active-section">
+            <header>
+                <h2>Tableau de Bord</h2>
+                <button onclick="loadLots()" class="btn-refresh"><i class="fas fa-sync"></i> Actualiser</button>
+            </header>
+            
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <h3>Total Lots</h3>
+                    <p id="stat-total">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>En Transit</h3>
+                    <p id="stat-transit">0</p>
+                </div>
+                <div class="stat-card">
+                    <h3>Certifiés</h3>
+                    <p id="stat-cert">0</p>
+                </div>
+            </div>
+
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>ID Lot</th>
+                            <th>Espèce</th>
+                            <th>Poids (kg)</th>
+                            <th>Statut</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="lots-table-body">
+                        <!-- Dynamic content -->
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <!-- Create Section -->
+        <section id="create-section">
+            <header><h2>Enregistrer une Récolte</h2></header>
+            <form id="create-lot-form" class="glass-form">
+                <div class="form-grid">
+                    <div class="input-group">
+                        <label>ID du Lot</label>
+                        <input type="text" id="lot_hash" placeholder="LOT_2024_001" required>
+                    </div>
+                    <div class="input-group">
+                        <label>ID Fermier</label>
+                        <input type="text" id="farmer_id" placeholder="FARMER_ABC" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Espèce</label>
+                        <select id="espece">
+                            <option value="Forastero">Forastero</option>
+                            <option value="Criollo">Criollo</option>
+                            <option value="Trinitario">Trinitario</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Poids (kg)</label>
+                        <input type="number" id="poids_kg" value="500" required>
+                    </div>
+                    <div class="input-group">
+                        <label>Latitude</label>
+                        <input type="number" step="any" id="latitude" value="6.12">
+                    </div>
+                    <div class="input-group">
+                        <label>Longitude</label>
+                        <input type="number" step="any" id="longitude" value="1.22">
+                    </div>
+                </div>
+                <div class="upload-area" id="drop-area">
+                    <i class="fas fa-cloud-upload-alt"></i>
+                    <p>Glissez la photo de la récolte ou cliquez ici</p>
+                    <input type="file" id="image-file" accept="image/*" hidden>
+                    <img id="preview" src="" alt="Preview" style="display:none; max-width: 100px; margin-top: 10px;">
+                </div>
+                <button type="submit" class="btn-submit">Graver sur la Blockchain</button>
+            </form>
+        </section>
+
+        <!-- Members Section -->
+        <section id="members-section">
+            <header><h2>Gestion des Membres (CA)</h2></header>
+            <div class="glass-form">
+                <h3>Enregistrer un nouvel Acteur</h3>
+                <form id="register-actor-form">
+                    <div class="form-grid">
+                        <div class="input-group">
+                            <label>ID Acteur (Hash)</label>
+                            <input type="text" id="actor_id" placeholder="USER_MOUSSA_001" required>
+                        </div>
+                        <div class="input-group">
+                            <label>Organisation</label>
+                            <select id="actor_org">
+                                <option value="producteurs">Producteurs</option>
+                                <option value="exportateurs">Exportateurs</option>
+                                <option value="certif">Certificateurs</option>
+                                <option value="transformateurs">Transformateurs</option>
+                            </select>
+
+                        </div>
+                        <div class="input-group">
+                            <label>Type d'Acteur</label>
+                            <select id="actor_type">
+                                <option value="PRODUCTEUR">Producteur</option>
+                                <option value="COOPERATIVE">Coopérative</option>
+                                <option value="EXPORTATEUR">Exportateur</option>
+                                <option value="CERTIFICATEUR">Certificateur</option>
+                                <option value="TRANSFORMATEUR">Transformateur</option>
+                            </select>
+
+                        </div>
+                        <div class="input-group">
+                            <label>Clé Publique (Optionnel)</label>
+                            <input type="text" id="actor_key" placeholder="ssh-rsa ...">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-submit">Créer l'Identité Blockchain</button>
+                </form>
+            </div>
+            <div id="register-success" class="alert-box" style="display:none;">
+                <p>✅ Utilisateur enregistré avec succès !</p>
+                <small id="register-details"></small>
+            </div>
+        </section>
+
+        <!-- Verify Section -->
+
+        <section id="verify-section">
+            <header><h2>Vérification Traceability</h2></header>
+            <div class="search-bar">
+                <input type="text" id="search-hash" placeholder="Entrez le Hash du Lot...">
+                <button onclick="verifyLot()"><i class="fas fa-search"></i> Vérifier</button>
+            </div>
+            <div id="verify-result" class="result-container" style="display:none;">
+                <!-- Verification details will appear here -->
+            </div>
+        </section>
+    </main>
+
+    <div id="loader" class="loader-overlay" style="display:none;">
+        <div class="spinner"></div>
+        <p>Communication avec la Blockchain...</p>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

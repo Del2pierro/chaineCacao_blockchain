@@ -1,0 +1,11 @@
+[
+  {
+    "name": "collectionPrivateLots",
+    "policy": "OR('OrgProducteursMSP.member', 'OrgExportateursMSP.member', 'OrgMinistereMSP.member')",
+    "requiredPeerCount": 1,
+    "maxPeerCount": 3,
+    "blockToLive": 1000000,
+    "memberOnlyRead": true,
+    "memberOnlyWrite": true
+  }
+]

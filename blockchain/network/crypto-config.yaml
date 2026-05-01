@@ -1,44 +1,56 @@
 # ---------------------------------------------------------------------------
-# Fabric Crypto Configuration
+# Fabric Crypto Configuration - ChainCacao Network
+# Single Orderer + 1 Peer per Organization
 # ---------------------------------------------------------------------------
 OrdererOrgs:
   - Name: Orderer
     Domain: chaincacao.com
+    EnableNodeOUs: true
     Specs:
       - Hostname: orderer
+
 PeerOrgs:
   - Name: OrgProducteurs
     Domain: producteurs.chaincacao.com
     EnableNodeOUs: true
     Template:
       Count: 1
+      Start: 0
     Users:
       Count: 1
+
   - Name: OrgExportateurs
     Domain: exportateurs.chaincacao.com
     EnableNodeOUs: true
     Template:
       Count: 1
+      Start: 0
     Users:
       Count: 1
+
   - Name: OrgCertif
     Domain: certif.chaincacao.com
     EnableNodeOUs: true
     Template:
       Count: 1
+      Start: 0
     Users:
       Count: 1
+
   - Name: OrgMinistere
     Domain: ministere.chaincacao.com
     EnableNodeOUs: true
     Template:
       Count: 1
+      Start: 0
     Users:
       Count: 1
-  - Name: OrgImportateurs
-    Domain: importateurs.chaincacao.com
+
+  - Name: OrgTransformateurs
+    Domain: transformateurs.chaincacao.com
     EnableNodeOUs: true
     Template:
       Count: 1
+      Start: 0
     Users:
       Count: 1

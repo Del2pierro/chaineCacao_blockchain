@@ -17,7 +17,7 @@ class LotLogic {
         Validation.checkTimestamp(dateCollecte, 'dateCollecte');
 
         if (await this.ledger.exists(lotHash)) {
-            throw new Error(`LOT_EXISTE: Le lot ${lotHash} existe déjà.`);
+            throw new Error(`LOT_EXISTE: Le lot ${lotHash} existe deja.`);
         }
 
         // 1. Données Publiques (visibles par tous)

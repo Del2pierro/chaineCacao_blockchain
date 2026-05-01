@@ -22,12 +22,12 @@ println() {
 println "Test 1: Registering a new actor (Producer) by the Ministry..."
 docker exec -e CORE_PEER_LOCALMSPID=OrgMinistereMSP \
             -e CORE_PEER_MSPCONFIGPATH=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/ministere.chaincacao.com/users/Admin@ministere.chaincacao.com/msp \
-            -e CORE_PEER_ADDRESS=peer0.ministere.chaincacao.com:10051 \
+            -e CORE_PEER_ADDRESS=peer0.ministere.chaincacao.com:7051 \
             -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/ministere.chaincacao.com/peers/peer0.ministere.chaincacao.com/tls/ca.crt \
             cli peer chaincode invoke -o orderer.chaincacao.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/chaincacao.com/orderers/orderer.chaincacao.com/tls/ca.crt -C ${CHANNEL_NAME} -n ${CC_NAME} \
             --peerAddresses peer0.producteurs.chaincacao.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/producteurs.chaincacao.com/peers/peer0.producteurs.chaincacao.com/tls/ca.crt \
-            --peerAddresses peer0.exportateurs.chaincacao.com:8051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/exportateurs.chaincacao.com/peers/peer0.exportateurs.chaincacao.com/tls/ca.crt \
-            --peerAddresses peer0.ministere.chaincacao.com:10051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/ministere.chaincacao.com/peers/peer0.ministere.chaincacao.com/tls/ca.crt \
+            --peerAddresses peer0.exportateurs.chaincacao.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/exportateurs.chaincacao.com/peers/peer0.exportateurs.chaincacao.com/tls/ca.crt \
+            --peerAddresses peer0.ministere.chaincacao.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/ministere.chaincacao.com/peers/peer0.ministere.chaincacao.com/tls/ca.crt \
             -c '{"function":"RegisterActor","Args":["ACTOR_001","PRODUCTEUR","PUB_KEY_XYZ"]}'
 
 
@@ -44,8 +44,8 @@ docker exec -e CORE_PEER_LOCALMSPID=OrgProducteursMSP \
             -e CORE_PEER_TLS_ROOTCERT_FILE=/opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/producteurs.chaincacao.com/peers/peer0.producteurs.chaincacao.com/tls/ca.crt \
             cli peer chaincode invoke -o orderer.chaincacao.com:7050 --tls --cafile /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/ordererOrganizations/chaincacao.com/orderers/orderer.chaincacao.com/tls/ca.crt -C ${CHANNEL_NAME} -n ${CC_NAME} \
             --peerAddresses peer0.producteurs.chaincacao.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/producteurs.chaincacao.com/peers/peer0.producteurs.chaincacao.com/tls/ca.crt \
-            --peerAddresses peer0.exportateurs.chaincacao.com:8051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/exportateurs.chaincacao.com/peers/peer0.exportateurs.chaincacao.com/tls/ca.crt \
-            --peerAddresses peer0.ministere.chaincacao.com:10051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/ministere.chaincacao.com/peers/peer0.ministere.chaincacao.com/tls/ca.crt \
+            --peerAddresses peer0.exportateurs.chaincacao.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/exportateurs.chaincacao.com/peers/peer0.exportateurs.chaincacao.com/tls/ca.crt \
+            --peerAddresses peer0.ministere.chaincacao.com:7051 --tlsRootCertFiles /opt/gopath/src/github.com/hyperledger/fabric/peer/organizations/peerOrganizations/ministere.chaincacao.com/peers/peer0.ministere.chaincacao.com/tls/ca.crt \
             -c "{\"function\":\"CreateLot\",\"Args\":[\"LOT_2024_001\",\"FARMER_ABC\",\"$GPS_JSON\",\"500\",\"Forastero\",\"2024-05-01T10:00:00Z\",\"MEDIA_HASH_123\",\"COOP_XYZ\"]}"
 
 

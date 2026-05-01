@@ -51,7 +51,13 @@
         cleanup() {
         println "Cleaning up existing containers and artifacts..."
 
-        # Stop and remove containers
+        # Force remove any lingering containers with conflicting names
+        docker rm -f ca_producteurs ca_exportateurs ca_certif ca_ministere ca_transformateurs ca_orderer 2>/dev/null || true
+        docker rm -f peer0.producteurs.chaincacao.com peer0.exportateurs.chaincacao.com peer0.certif.chaincacao.com peer0.ministere.chaincacao.com peer0.transformateurs.chaincacao.com orderer.chaincacao.com 2>/dev/null || true
+        docker rm -f couchdb0 couchdb1 couchdb2 couchdb3 couchdb4 2>/dev/null || true
+        docker rm -f cli 2>/dev/null || true
+
+        # Stop and remove containers via compose
         docker-compose -f "$NETWORK_DIR/docker-compose.yaml" down --volumes --remove-orphans 2>/dev/null || true
 
         # Remove crypto materials and genesis block

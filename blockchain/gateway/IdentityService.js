@@ -1,7 +1,7 @@
 const FabricCAServices = require('fabric-ca-client');
+const { Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
-const crypto = require('crypto');
 
 class IdentityService {
     constructor(orgsRoot) {
@@ -19,83 +19,103 @@ class IdentityService {
 
     }
 
-    async getIdentity(orgName, userId = 'Admin') {
-        const orgDomain = `${orgName}.chaincacao.com`;
-        const userPath = path.join(this.orgsRoot, 'peerOrganizations', orgDomain, 'users', `${userId}@${orgDomain}`);
-        
-        const mspDir = path.join(userPath, 'msp');
-        const certPath = path.join(mspDir, 'signcerts', `cert.pem`); // Normalized path for CA-enrolled users
-        const keyDir = path.join(mspDir, 'keystore');
-        
-        // Try fallback to cryptogen path if CA path doesn't exist
-        let finalCertPath = certPath;
-        if (!fs.existsSync(certPath)) {
-            finalCertPath = path.join(userPath, 'msp', 'signcerts', `${userId}@${orgDomain}-cert.pem`);
+    async getWallet(orgName) {
+        const walletPath = path.join(this.orgsRoot, 'wallets', orgName);
+        console.log(`Using wallet path: ${walletPath}`);
+        return await Wallets.newFileSystemWallet(walletPath);
+    }
+
+    async getIdentity(orgName, userId = 'admin') {
+        console.log(`Getting identity for ${userId} in ${orgName}...`);
+        const wallet = await this.getWallet(orgName);
+        let identity = await wallet.get(userId);
+
+        if (!identity && userId === 'admin') {
+            console.log(`Admin for ${orgName} not in wallet. Enrolling...`);
+            await this.enrollAdminInWallet(orgName);
+            identity = await wallet.get('admin');
         }
 
-        if (!fs.existsSync(finalCertPath)) {
-            throw new Error(`Identité non trouvée pour ${userId} dans ${orgName}`);
+        if (!identity) {
+            throw new Error(`Identite ${userId} non trouvee dans le wallet de ${orgName}`);
         }
 
-        const credentials = fs.readFileSync(finalCertPath);
-        const keyFiles = fs.readdirSync(keyDir);
-        const privateKey = fs.readFileSync(path.join(keyDir, keyFiles[0]));
+        return identity;
+    }
 
-        const mspId = `${orgName.charAt(0).toUpperCase() + orgName.slice(1)}MSP`;
+    async enrollAdminInWallet(orgName) {
+        const caUrl = this.caConfigs[orgName];
+        const wallet = await this.getWallet(orgName);
 
-        return { mspId, credentials, privateKey };
+        const tlsCertPath = path.join(this.orgsRoot, 'fabric-ca', orgName, 'ca-cert.pem');
+        const tlsCert = fs.readFileSync(tlsCertPath).toString();
+        const caService = new FabricCAServices(caUrl, { trustedRoots: [tlsCert], verify: false }, `ca-${orgName}`);
+
+        // Use bootstrap credentials from .env or default
+        const enrollment = await caService.enroll({
+            enrollmentID: 'admin',
+            enrollmentSecret: process.env.CA_ADMIN_PASS || 'adminpw'
+        });
+
+        const mspId = `Org${orgName.charAt(0).toUpperCase() + orgName.slice(1)}MSP`;
+        const x509Identity = {
+            credentials: {
+                certificate: enrollment.certificate,
+                privateKey: enrollment.key.toBytes(),
+            },
+            mspId,
+            type: 'X.509',
+        };
+
+        await wallet.put('admin', x509Identity);
+        console.log(`Admin for ${orgName} enrolled successfully.`);
     }
 
     async registerAndEnrollUser(orgName, userId, role = 'client') {
         const caUrl = this.caConfigs[orgName];
-        if (!caUrl) throw new Error(`Configuration CA manquante pour ${orgName}`);
+        const wallet = await this.getWallet(orgName);
 
-        const orgDomain = `${orgName}.chaincacao.com`;
+        // 1. Check if user already exists
+        if (await wallet.get(userId)) {
+            throw new Error(`L'utilisateur ${userId} existe deja dans le wallet.`);
+        }
+
+        // 2. Setup CA client
         const tlsCertPath = path.join(this.orgsRoot, 'fabric-ca', orgName, 'ca-cert.pem');
         const tlsCert = fs.readFileSync(tlsCertPath).toString();
-
-
         const caService = new FabricCAServices(caUrl, { trustedRoots: [tlsCert], verify: false }, `ca-${orgName}`);
 
-        // 1. Enroll the registrar (Admin) to perform the registration
-        const adminIdentity = await this.getIdentity(orgName, 'Admin');
-        const registrar = await caService.newIdentityService().getIdentity('admin', adminIdentity); // In real prod, use proper registrar
+        // 3. Get registrar (admin)
+        const adminIdentity = await this.getIdentity(orgName, 'admin');
+        const provider = wallet.getProviderRegistry().getProvider(adminIdentity.type);
+        const adminUser = await provider.getUserContext(adminIdentity, 'admin');
 
-        // 2. Register the user
+        // 4. Register
         const secret = await caService.register({
             enrollmentID: userId,
             enrollmentSecret: `${userId}pw`,
             role: role,
-            affiliation: `${orgName}.department1`,
             maxEnrollments: -1
-        }, {
-            getIdentity: () => ({
-                getEnrollmentID: () => 'admin',
-                getSigningIdentity: () => ({
-                    sign: (msg) => {
-                        const sign = crypto.createSign('sha256');
-                        sign.update(msg);
-                        return sign.sign(adminIdentity.privateKey);
-                    },
-                    getPublicContext: () => ({ getCertificate: () => adminIdentity.credentials.toString() })
-                })
-            })
-        });
+        }, adminUser);
 
-        // 3. Enroll the user
+        // 5. Enroll
         const enrollment = await caService.enroll({
             enrollmentID: userId,
             enrollmentSecret: secret
         });
 
-        // 4. Save to filesystem (so gateway can find it)
-        const userPath = path.join(this.orgsRoot, 'peerOrganizations', orgDomain, 'users', `${userId}@${orgDomain}`, 'msp');
-        fs.mkdirSync(path.join(userPath, 'signcerts'), { recursive: true });
-        fs.mkdirSync(path.join(userPath, 'keystore'), { recursive: true });
+        // 6. Save to wallet
+        const mspId = `Org${orgName.charAt(0).toUpperCase() + orgName.slice(1)}MSP`;
+        const x509Identity = {
+            credentials: {
+                certificate: enrollment.certificate,
+                privateKey: enrollment.key.toBytes(),
+            },
+            mspId,
+            type: 'X.509',
+        };
 
-        fs.writeFileSync(path.join(userPath, 'signcerts', 'cert.pem'), enrollment.certificate);
-        fs.writeFileSync(path.join(userPath, 'keystore', 'priv_sk'), enrollment.key.toBytes());
-
+        await wallet.put(userId, x509Identity);
         return { success: true, userId, secret };
     }
 }

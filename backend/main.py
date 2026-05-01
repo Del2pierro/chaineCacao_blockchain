@@ -7,7 +7,33 @@ from database import init_db
 try:
     init_db()
 except Exception as e:
-    print(f"Database initialization skipped or failed: {e}")
+    import traceback
+    print("Database initialization skipped or failed.")
+    # Try to print error without encoding issues
+    try:
+        print(f"Error: {str(e)}")
+    except:
+        print("Could not even print the error message due to encoding.")
+
+from fastapi.responses import JSONResponse
+from starlette.middleware.base import BaseHTTPMiddleware
+import traceback
+
+class SafeEncodingMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        try:
+            return await call_next(request)
+        except Exception as e:
+            try:
+                error_msg = str(e)
+            except UnicodeDecodeError:
+                error_msg = repr(e)
+            safe_msg = error_msg.encode('utf-8', 'replace').decode('utf-8')
+            print(f"GLOBAL ERROR CAUGHT: {safe_msg}")
+            return JSONResponse(
+                status_code=500,
+                content={"success": False, "error": safe_msg}
+            )
 
 app = FastAPI(
     title="ChainCacao API",
@@ -15,11 +41,11 @@ app = FastAPI(
     version="2.0.0"
 )
 
-
-# CORS Configuration for Flutter, React, and local HTML testing
+# Add Middleware
+app.add_middleware(SafeEncodingMiddleware)
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Autorise toutes les origines pour le développement
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

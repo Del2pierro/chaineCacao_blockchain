@@ -20,9 +20,9 @@ UPLOAD_DIR = "uploads"
 async def create_new_lot(
     lot_hash: str = Form(...),
     farmer_id: str = Form(...),
-    latitude: float = Form(...),
-    longitude: float = Form(...),
-    poids_kg: float = Form(...),
+    latitude: str = Form(...),
+    longitude: str = Form(...),
+    poids_kg: str = Form(...),
     espece: str = Form(...),
     date_collecte: str = Form(...),
     coop_id: str = Form(""),
@@ -33,6 +33,14 @@ async def create_new_lot(
     Unified endpoint: Upload image, generate hash, store in Postgres, and create Lot on Blockchain.
     """
     try:
+        # 0. Manual Type Conversion (to catch errors before they trigger encoding crashes)
+        try:
+            f_lat = float(latitude)
+            f_lon = float(longitude)
+            f_poids = float(poids_kg)
+        except ValueError as ve:
+            raise HTTPException(status_code=400, detail=f"Erreur de format numerique: {str(ve)}")
+
         # 1. Process Image and Generate Hash
         content = await file.read()
         sha256_hash = hashlib.sha256(content).hexdigest()
@@ -50,21 +58,26 @@ async def create_new_lot(
                 buffer.write(content)
 
         # 2. Store metadata in PostgreSQL
-        db_media = MediaMetadata(
-            lot_hash=lot_hash,
-            filename=file.filename,
-            file_path=file_path,
-            sha256_hash=sha256_hash
-        )
-        db.add(db_media)
-        db.commit()
+        try:
+            db_media = MediaMetadata(
+                lot_hash=lot_hash,
+                filename=file.filename,
+                file_path=file_path,
+                sha256_hash=sha256_hash
+            )
+            db.add(db_media)
+            db.commit()
+        except Exception as db_err:
+            db.rollback()
+            print(f"DATABASE ERROR (Skipped for Traceability): {str(db_err)}")
+            # We continue even if DB fails, as Blockchain is the primary record
 
         # 3. Prepare data for Blockchain
         lot_data = {
             "lot_hash": lot_hash,
             "farmer_id": farmer_id,
-            "gps": {"latitude": latitude, "longitude": longitude},
-            "poids_kg": poids_kg,
+            "gps": {"latitude": f_lat, "longitude": f_lon},
+            "poids_kg": f_poids,
             "espece": espece,
             "date_collecte": date_collecte,
             "media_hash": sha256_hash,
@@ -72,8 +85,7 @@ async def create_new_lot(
         }
 
         # 4. Invoke Blockchain
-        # Note: Identity (producteurs/Admin) can be dynamically set via JWT in production
-        blockchain_result = await gateway.create_lot(lot_data, "producteurs", "Admin")
+        blockchain_result = await gateway.create_lot(lot_data, "producteurs", "admin")
         
         return {
             "success": True,
@@ -85,7 +97,14 @@ async def create_new_lot(
         }
     except Exception as e:
         db.rollback()
-        raise HTTPException(status_code=400, detail=str(e))
+        # Handle Windows encoding issues (accented characters in system error messages)
+        try:
+            error_msg = str(e)
+        except UnicodeDecodeError:
+            error_msg = repr(e)
+        
+        print(f"ERROR in create_new_lot: {error_msg}")
+        raise HTTPException(status_code=400, detail=f"Backend Error: {error_msg}")
 
 # --- Helper Endpoints ---
 
@@ -116,7 +135,7 @@ async def update_lot_status(lot_hash: str, new_status: str):
     Update the status of a lot (e.g., COLLECTE -> EN_TRANSIT).
     """
     try:
-        result = await gateway.invoke_transaction("UpdateLotStatus", [lot_hash, new_status], "producteurs", "Admin")
+        result = await gateway.invoke_transaction("UpdateLotStatus", [lot_hash, new_status], "producteurs", "admin")
         return result
     except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

@@ -11,7 +11,7 @@ class ActorLogic {
 
     async registerActor(actorIdHash, typeActeur, clePublique) {
         if (await this.ledger.exists(actorIdHash)) {
-            throw new Error(`ACTEUR_EXISTE: L'acteur ${actorIdHash} est déjà enregistré.`);
+            throw new Error(`ACTEUR_EXISTE: L'acteur ${actorIdHash} est deja enregistre.`);
         }
 
         const timestamp = new Date(this.ctx.stub.getTxTimestamp().seconds.low * 1000).toISOString();

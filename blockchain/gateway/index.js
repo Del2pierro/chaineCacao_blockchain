@@ -1,6 +1,6 @@
 const express = require('express');
 const grpc = require('@grpc/grpc-js');
-const { connect, hash } = require('@hyperledger/fabric-gateway');
+const { connect, signers } = require('@hyperledger/fabric-gateway');
 const fs = require('fs');
 const path = require('path');
 require('dotenv').config({ path: path.resolve(__dirname, '.env') });
@@ -10,34 +10,46 @@ const app = express();
 app.use(express.json());
 
 const ORGS_ROOT = path.resolve(__dirname, process.env.ORGS_ROOT || '../organizations');
+const CHANNEL_NAME = process.env.CHANNEL_NAME || 'chaincacaochannel';
+const CHAINCODE_NAME = process.env.CHAINCODE_NAME || 'chaincacao';
 const identityService = new IdentityService(ORGS_ROOT);
 
 // gRPC connection details from .env
-const PEER_ENDPOINT = process.env.PEER_ENDPOINT || 'localhost:7051';
-const PEER_HOST_ALIAS = process.env.PEER_HOST_ALIAS || 'peer0.producteurs.chaincacao.com';
-const CHANNEL_NAME = process.env.CHANNEL_NAME || 'chaincacaochannel';
-const CHAINCODE_NAME = process.env.CHAINCODE_NAME || 'chaincacao';
+const crypto = require('crypto');
 
+const ORGS_CONFIG = {
+    'producteurs': { port: 7051, mspId: 'OrgProducteursMSP' },
+    'exportateurs': { port: 8051, mspId: 'OrgExportateursMSP' },
+    'certif': { port: 9051, mspId: 'OrgCertifMSP' },
+    'ministere': { port: 10051, mspId: 'OrgMinistereMSP' },
+    'transformateurs': { port: 11051, mspId: 'OrgTransformateursMSP' }
+};
 
-async function getGatewayConnection(orgName, userId) {
+async function getGatewayConnection(orgName, userId = 'admin') {
     const identity = await identityService.getIdentity(orgName, userId);
-    
+    const privateKey = crypto.createPrivateKey(identity.credentials.privateKey);
+
+    // Primary connection (the one we use as entry point)
+    const primaryOrg = ORGS_CONFIG[orgName];
     const tlsCertPath = path.join(ORGS_ROOT, 'peerOrganizations', `${orgName}.chaincacao.com`, 'peers', `peer0.${orgName}.chaincacao.com`, 'tls', 'ca.crt');
     const tlsRootCert = fs.readFileSync(tlsCertPath);
 
-    const client = new grpc.Client(PEER_ENDPOINT, grpc.credentials.createSsl(tlsRootCert), {
-        'grpc.ssl_target_name_override': PEER_HOST_ALIAS,
+    const client = new grpc.Client(`localhost:${primaryOrg.port}`, grpc.credentials.createSsl(tlsRootCert), {
+        'grpc.ssl_target_name_override': `peer0.${orgName}.chaincacao.com`,
     });
 
     return {
         gateway: connect({
             client,
-            identity: { mspId: identity.mspId, credentials: identity.credentials },
-            signer: (digest) => {
-                const sign = require('crypto').createSign('sha256');
-                sign.update(digest);
-                return sign.sign(identity.privateKey);
+            identity: { 
+                mspId: identity.mspId, 
+                credentials: Buffer.from(identity.credentials.certificate) 
             },
+            signer: signers.newPrivateKeySigner(privateKey),
+            // For production-ready: we trust the discovery but as we are in dev/localhost, 
+            // we ensure the primary client is used. 
+            // In a real production environment, 'client' would be a load balancer or we'd use Discovery with proper DNS.
+            discovery: { enabled: true, asLocalhost: true },
             evaluateOptions: () => ({ deadline: Date.now() + 5000 }),
             endorseOptions: () => ({ deadline: Date.now() + 15000 }),
             submitOptions: () => ({ deadline: Date.now() + 15000 }),
@@ -50,7 +62,7 @@ async function getGatewayConnection(orgName, userId) {
 app.post('/invoke', async (req, res) => {
     const { function: fn, args } = req.body;
     const orgName = req.header('X-Org-Name') || 'producteurs';
-    const userId = req.header('X-User-ID') || 'Admin';
+    const userId = req.header('X-User-ID') || 'admin';
 
     let connection;
     try {
@@ -65,7 +77,13 @@ app.post('/invoke', async (req, res) => {
         res.json({ success: true, result: result ? JSON.parse(result) : null });
     } catch (error) {
         console.error('Transaction error:', error);
-        res.status(500).json({ success: false, error: error.message });
+        if (error.details) console.error('Error details:', error.details);
+        if (error.cause) console.error('Error cause:', error.cause);
+        res.status(500).json({ 
+            success: false, 
+            error: error.message,
+            details: error.details || null 
+        });
     } finally {
         if (connection) connection.client.close();
     }
@@ -74,7 +92,7 @@ app.post('/invoke', async (req, res) => {
 app.post('/query', async (req, res) => {
     const { function: fn, args } = req.body;
     const orgName = req.header('X-Org-Name') || 'producteurs';
-    const userId = req.header('X-User-ID') || 'Admin';
+    const userId = req.header('X-User-ID') || 'admin';
 
     let connection;
     try {

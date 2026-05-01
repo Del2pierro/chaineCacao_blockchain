@@ -19,7 +19,7 @@ async def register_actor(actor: ActorRegister):
 
         # 2. Chaincode Registration (Business Logic)
         args = [actor.actor_id_hash, actor.type_acteur, actor.cle_publique]
-        cc_result = await gateway.invoke_transaction("RegisterActor", args, "ministere", "Admin")
+        cc_result = await gateway.invoke_transaction("RegisterActor", args, "ministere", "admin")
         
         return {
             "success": True,

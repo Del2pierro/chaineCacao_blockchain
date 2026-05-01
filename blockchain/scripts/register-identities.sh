@@ -7,6 +7,13 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BLOCKCHAIN_DIR="$(dirname "$SCRIPT_DIR")"
 export PATH="$BLOCKCHAIN_DIR/bin:$PATH"
 
+# Load environment variables
+if [ -f "$BLOCKCHAIN_DIR/network/.env" ]; then
+    source "$BLOCKCHAIN_DIR/network/.env"
+else
+    echo "Warning: .env file not found in $BLOCKCHAIN_DIR/network/"
+fi
+
 # Configuration des ports CA
 CA_PORT_PRODUCTEURS=7054
 CA_PORT_EXPORTATEURS=8054
@@ -14,6 +21,27 @@ CA_PORT_CERTIF=9054
 CA_PORT_MINISTERE=10054
 CA_PORT_TRANSFORMATEURS=11054
 CA_PORT_ORDERER=12054
+
+function createNodeOUConfig() {
+    local msp_dir=$1
+    echo "Creating config.yaml for NodeOUs in $msp_dir..."
+    cat <<EOF > "$msp_dir/config.yaml"
+NodeOUs:
+  Enable: true
+  ClientOUIdentifier:
+    Certificate: cacerts/ca-cert.pem
+    OrganizationalUnitIdentifier: client
+  PeerOUIdentifier:
+    Certificate: cacerts/ca-cert.pem
+    OrganizationalUnitIdentifier: peer
+  AdminOUIdentifier:
+    Certificate: cacerts/ca-cert.pem
+    OrganizationalUnitIdentifier: admin
+  OrdererOUIdentifier:
+    Certificate: cacerts/ca-cert.pem
+    OrganizationalUnitIdentifier: orderer
+EOF
+}
 
 function enrollAdmin() {
     local org=$1
@@ -34,7 +62,7 @@ function enrollAdmin() {
     done
 
     # Enroll CA Registrar (admin)
-    fabric-ca-client enroll -u https://admin:adminpw@localhost:${port} --caname ca-${org} --tls.certfiles "$CA_CERT"
+    fabric-ca-client enroll -u https://${CA_ADMIN_NAME}:${CA_ADMIN_PASSWORD}@localhost:${port} --caname ca-${org} --tls.certfiles "$CA_CERT"
 
     # Set up MSP folder structure
     mkdir -p "$ORG_DIR/msp/cacerts"
@@ -42,16 +70,19 @@ function enrollAdmin() {
     cp "$CA_CERT" "$ORG_DIR/msp/cacerts/"
     cp "$CA_CERT" "$ORG_DIR/msp/tlscacerts/"
 
+    # Create config.yaml for NodeOUs
+    createNodeOUConfig "$ORG_DIR/msp"
+
     echo "Registering & Enrolling Organization Admin for $org..."
     # Register Org Admin
-    fabric-ca-client register --caname ca-${org} --id.name orgAdmin --id.secret orgAdminpw --id.type admin --tls.certfiles "$CA_CERT"
+    fabric-ca-client register --caname ca-${org} --id.name orgAdmin --id.secret ${ORG_ADMIN_PASSWORD} --id.type admin --tls.certfiles "$CA_CERT"
     
     # Enroll Org Admin into the "users" folder
     ADMIN_DIR="$ORG_DIR/users/Admin@${org}.chaincacao.com"
     mkdir -p "$ADMIN_DIR"
-    fabric-ca-client enroll -u https://orgAdmin:orgAdminpw@localhost:${port} --caname ca-${org} -M "$ADMIN_DIR/msp" --tls.certfiles "$CA_CERT"
+    fabric-ca-client enroll -u https://orgAdmin:${ORG_ADMIN_PASSWORD}@localhost:${port} --caname ca-${org} -M "$ADMIN_DIR/msp" --tls.certfiles "$CA_CERT"
 
-    # CRUCIAL: Set up admincerts for the User Admin MSP
+    # Set up admincerts for the User Admin MSP
     mkdir -p "$ADMIN_DIR/msp/admincerts"
     cp "$ADMIN_DIR/msp/signcerts/"* "$ADMIN_DIR/msp/admincerts/"
 
@@ -70,12 +101,12 @@ function registerPeer() {
     CA_CERT="$BLOCKCHAIN_DIR/organizations/fabric-ca/${org}/ca-cert.pem"
 
     # Register peer
-    fabric-ca-client register --caname ca-${org} --id.name peer0 --id.secret peer0pw --id.type peer --tls.certfiles "$CA_CERT"
+    fabric-ca-client register --caname ca-${org} --id.name peer0 --id.secret ${PEER_PASSWORD} --id.type peer --tls.certfiles "$CA_CERT"
 
     # Enroll peer
     PEER_DIR="$ORG_DIR/peers/peer0.${org}.chaincacao.com"
     mkdir -p "$PEER_DIR"
-    fabric-ca-client enroll -u https://peer0:peer0pw@localhost:${port} --caname ca-${org} -M "$PEER_DIR/msp" --csr.hosts peer0.${org}.chaincacao.com --tls.certfiles "$CA_CERT"
+    fabric-ca-client enroll -u https://peer0:${PEER_PASSWORD}@localhost:${port} --caname ca-${org} -M "$PEER_DIR/msp" --csr.hosts peer0.${org}.chaincacao.com --tls.certfiles "$CA_CERT"
 
     # Set up Peer TLS folders
     mkdir -p "$PEER_DIR/tls"
@@ -107,15 +138,15 @@ function registerOrderer() {
     done
 
     # Enroll CA Registrar (admin) for Orderer
-    fabric-ca-client enroll -u https://admin:adminpw@localhost:${port} --caname ca-orderer --tls.certfiles "$CA_CERT"
+    fabric-ca-client enroll -u https://${CA_ADMIN_NAME}:${CA_ADMIN_PASSWORD}@localhost:${port} --caname ca-orderer --tls.certfiles "$CA_CERT"
 
     # Register orderer identity
-    fabric-ca-client register --caname ca-orderer --id.name orderer --id.secret ordererpw --id.type orderer --tls.certfiles "$CA_CERT"
+    fabric-ca-client register --caname ca-orderer --id.name orderer --id.secret ${ORDERER_PASSWORD} --id.type orderer --tls.certfiles "$CA_CERT"
 
     # Enroll orderer node
     NODE_DIR="$ORDERER_DIR/orderers/orderer.chaincacao.com"
     mkdir -p "$NODE_DIR"
-    fabric-ca-client enroll -u https://orderer:ordererpw@localhost:${port} --caname ca-orderer -M "$NODE_DIR/msp" --csr.hosts orderer.chaincacao.com --tls.certfiles "$CA_CERT"
+    fabric-ca-client enroll -u https://orderer:${ORDERER_PASSWORD}@localhost:${port} --caname ca-orderer -M "$NODE_DIR/msp" --csr.hosts orderer.chaincacao.com --tls.certfiles "$CA_CERT"
 
     # Set up Orderer TLS folder
     mkdir -p "$NODE_DIR/tls"
@@ -128,6 +159,9 @@ function registerOrderer() {
     cp "$CA_CERT" "$NODE_DIR/msp/tlscacerts/"
     mkdir -p "$NODE_DIR/msp/cacerts"
     cp "$CA_CERT" "$NODE_DIR/msp/cacerts/"
+
+    # Create config.yaml for Orderer
+    createNodeOUConfig "$ORDERER_DIR/msp"
 
     # CRUCIAL: Orderer also needs admincerts to start
     mkdir -p "$NODE_DIR/msp/admincerts"

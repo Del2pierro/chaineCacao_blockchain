@@ -31,6 +31,12 @@ fi
 
 configtxgen -profile ChainCacaoChannel -outputCreateChannelTx ./channel-artifacts/${CHANNEL_NAME}.tx -channelID ${CHANNEL_NAME} || error_exit "Failed to generate channel transaction"
 
+# Generate Anchor Peer Transactions
+for org in Producteurs Exportateurs Certif Ministere Transformateurs; do
+    println "Generating anchor peer update for Org${org}..."
+    configtxgen -profile ChainCacaoChannel -outputAnchorPeersUpdate ./channel-artifacts/Org${org}anchors.tx -channelID ${CHANNEL_NAME} -asOrg Org${org}MSP || error_exit "Failed for Org${org}"
+done
+
 println "Joining peers to channel ${CHANNEL_NAME}..."
 docker exec cli ./scripts/internal-channel-join.sh || error_exit "Failed to join peers to channel"
 

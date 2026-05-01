@@ -9,7 +9,7 @@ class AccessControl {
         EXPORTATEUR: 'OrgExportateursMSP',
         CERTIFICATEUR: 'OrgCertifMSP',
         MINISTERE: 'OrgMinistereMSP',
-        IMPORTATEUR: 'OrgImportateursMSP'
+        TRANSFORMATEUR: 'OrgTransformateursMSP'
     };
 
     /**

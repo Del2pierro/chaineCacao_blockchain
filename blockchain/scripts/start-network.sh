@@ -27,6 +27,17 @@ function error_exit() {
   exit 1
 }
 
+function wait_for_healthy() {
+    local container=$1
+    println "Waiting for $container to be ready..."
+    while [ "$(docker inspect -f '{{.State.Health.Status}}' $container 2>/dev/null)" != "healthy" ]; do
+        printf "."
+        sleep 2
+    done
+    echo ""
+    println "Container $container is READY."
+}
+
 # Check if network is already bootstrapped
 BOOTSTRAPPED=true
 if [ ! -d "../organizations/peerOrganizations" ]; then
@@ -45,11 +56,11 @@ else
     println "Cleaning up existing containers (if any)..."
     docker-compose down --remove-orphans
 
-    println "Starting Fabric CA containers to generate certificates..."
-    docker-compose up -d ca.producteurs.chaincacao.com ca.exportateurs.chaincacao.com ca.certif.chaincacao.com ca.ministere.chaincacao.com ca.transformateurs.chaincacao.com ca.orderer.chaincacao.com || error_exit "Failed to start CA containers"
+    println "Starting Fabric CA containers..."
+    docker-compose up -d ca_producteurs ca_exportateurs ca_certif ca_ministere ca_transformateurs ca_orderer || error_exit "Failed to start CA containers"
 
-    println "Waiting for CA servers to be ready..."
-    sleep 10
+    wait_for_healthy ca_producteurs
+    wait_for_healthy ca_orderer
 
     println "Registering identities via Fabric CA..."
     bash ../scripts/register-identities.sh || error_exit "Failed to register identities"
